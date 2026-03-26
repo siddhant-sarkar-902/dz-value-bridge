@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dezerv — Value Bridge Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --bg:#080F1C;
+  --bg-card:#0E1828;
+  --bg-elevated:#152135;
+  --bg-hover:#1C2C42;
+  --accent:#00D47E;
+  --accent-dim:rgba(0,212,126,0.10);
+  --accent-glow:rgba(0,212,126,0.25);
+  --blue:#4FACFE;
+  --blue-dim:rgba(79,172,254,0.10);
+  --red:#FF5C6A;
+  --red-dim:rgba(255,92,106,0.10);
+  --yellow:#FFB800;
+  --text-primary:#FFFFFF;
+  --text-secondary:#6A7D96;
+  --text-muted:#2E3E52;
+  --border:rgba(255,255,255,0.06);
+  --border-bright:rgba(255,255,255,0.12);
+  --radius:16px;
+  --radius-sm:10px;
+  --radius-xs:6px;
+}
+
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#04080F;
+  color:var(--text-primary);
+  min-height:100vh;
+}
+
+/* ==================== DEMO NAV ==================== */
+.demo-nav{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  background:rgba(4,8,15,0.96);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+}
+.demo-label{
+  font-size:10px;font-weight:700;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.1em;margin-right:6px;
+}
+.demo-btn{
+  font-family:inherit;font-size:12px;font-weight:500;
+  color:var(--text-secondary);background:var(--bg-card);
+  border:1px solid var(--border);border-radius:6px;
+  padding:5px 12px;cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.demo-btn:hover{color:#fff;border-color:var(--border-bright);}
+.demo-btn.active{color:var(--accent);border-color:rgba(0,212,126,0.4);background:var(--accent-dim);}
+
+/* ==================== MAIN ==================== */
+.main{
+  padding-top:62px;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding-bottom:40px;background:linear-gradient(180deg,#04080F 0%,#060D1A 100%);
+}
+
+/* ==================== PHONE FRAME ==================== */
+.phone-wrap{
+  display:flex;justify-content:center;align-items:flex-start;
+  padding:24px 20px;width:100%;
+}
+.phone-frame{
+  width:390px;background:var(--bg);
+  border-radius:48px;
+  border:1.5px solid rgba(255,255,255,0.12);
+  box-shadow:0 0 0 8px rgba(0,0,0,0.4),0 40px 100px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.04);
+  overflow:hidden;position:relative;min-height:860px;
+}
+.dynamic-island{
+  width:120px;height:34px;background:#000;
+  border-radius:20px;margin:14px auto 0;position:relative;z-index:10;
+}
+
+/* ==================== SCREEN SYSTEM ==================== */
+.screen-outer{
+  height:calc(100% - 58px);overflow-y:auto;
+  scrollbar-width:none;position:relative;
+}
+.screen-outer::-webkit-scrollbar{display:none;}
+.client-screen{display:none;}
+.client-screen.visible{display:block;}
+
+/* ==================== BOTTOM NAV ==================== */
+.bottom-nav{
+  position:absolute;bottom:0;left:0;right:0;height:80px;
+  background:rgba(14,24,40,0.97);backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-around;padding-top:12px;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;padding:0 8px;
+}
+.nav-item span{font-size:10px;font-weight:500;color:var(--text-muted);}
+.nav-item svg{color:var(--text-muted);}
+.nav-item.active span{color:var(--accent);}
+.nav-item.active svg{color:var(--accent);}
+
+/* ==================== APP HEADER ==================== */
+.app-header{
+  padding:14px 20px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.app-logo{
+  font-size:19px;font-weight:900;color:var(--accent);
+  letter-spacing:-0.5px;
+}
+.icon-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--bg-elevated);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  position:relative;flex-shrink:0;
+}
+.notif-dot{
+  position:absolute;top:7px;right:7px;width:7px;height:7px;
+  background:var(--accent);border-radius:50%;border:1.5px solid var(--bg);
+}
+
+/* ==================== SCREEN HEADER ==================== */
+.screen-header{
+  padding:14px 20px 10px;display:flex;align-items:center;gap:12px;
+}
+.back-btn{
+  width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  background:var(--bg-elevated);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.screen-title{font-size:16px;font-weight:700;}
+.screen-subtitle{font-size:11px;color:var(--text-secondary);margin-top:1px;}
+
+/* ==================== CARDS ==================== */
+.card{
+  background:var(--bg-card);border-radius:var(--radius);
+  border:1px solid var(--border);padding:18px 20px;margin:0 16px 12px;
+}
+.card-sm{
+  background:var(--bg-card);border-radius:var(--radius-sm);
+  border:1px solid var(--border);padding:13px 16px;margin:0 16px 8px;
+}
+
+/* ==================== PERIOD SELECTOR ==================== */
+.period-sel{
+  display:flex;gap:3px;background:var(--bg-elevated);
+  border-radius:10px;padding:3px;
+}
+.p-btn{
+  flex:1;text-align:center;padding:6px 2px;border-radius:7px;
+  font-size:11px;font-weight:600;color:var(--text-secondary);
+  cursor:pointer;transition:all 0.2s;border:none;background:none;font-family:inherit;
+}
+.p-btn.active{
+  background:var(--bg-card);color:var(--text-primary);
+  box-shadow:0 1px 6px rgba(0,0,0,0.4);
+}
+
+/* ==================== CHIPS ==================== */
+.chip{
+  display:inline-flex;align-items:center;padding:3px 8px;
+  border-radius:20px;font-size:11px;font-weight:600;
+}
+.chip-green{background:var(--accent-dim);color:var(--accent);}
+.chip-red{background:var(--red-dim);color:var(--red);}
+.chip-blue{background:var(--blue-dim);color:var(--blue);}
+.chip-yellow{background:rgba(255,184,0,0.1);color:var(--yellow);}
+
+/* ==================== PORTFOLIO SCREEN ==================== */
+.portfolio-tabs{
+  display:flex;gap:4px;padding:0 16px;margin-bottom:14px;
+}
+.ptab{
+  flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:600;
+  border:none;font-family:inherit;cursor:pointer;transition:all 0.15s;
+}
+.ptab.active{background:var(--accent);color:#000;}
+.ptab:not(.active){background:var(--bg-elevated);color:var(--text-secondary);}
+
+.xirr-row{display:flex;justify-content:space-between;align-items:flex-end;}
+.xirr-val{font-size:26px;font-weight:800;letter-spacing:-0.5px;}
+.xirr-label{font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+
+.divider{height:1px;background:var(--border);margin:14px 0;}
+
+/* ==================== ATTRIBUTION CARD ==================== */
+.attrib-card{
+  background:linear-gradient(135deg,#0E1828 0%,#0A1420 100%);
+  border:1px solid rgba(0,212,126,0.2);border-radius:var(--radius);
+  padding:16px 18px;margin:0 16px 12px;cursor:pointer;
+  position:relative;overflow:hidden;transition:border-color 0.2s;
+}
+.attrib-card:hover{border-color:rgba(0,212,126,0.35);}
+.attrib-card::before{
+  content:'';position:absolute;top:-1px;left:30px;right:30px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,126,0.6),transparent);
+}
+.attrib-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--border);
+}
+.attrib-row:last-of-type{border-bottom:none;}
+.attrib-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.attrib-name{font-size:13px;font-weight:500;}
+.attrib-desc{font-size:10px;color:var(--text-secondary);margin-top:1px;}
+.attrib-val{font-size:15px;font-weight:700;}
+
+.card-arrow{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:11px;margin-top:11px;border-top:1px solid var(--border);
+}
+
+/* ==================== WATERFALL SCREEN ==================== */
+.wf-summary{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding:4px 20px 14px;
+}
+.wf-chart{padding:0 14px;}
+.wf-row{
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;
+}
+.wf-row.total{cursor:default;}
+.wf-lbl{
+  width:100px;flex-shrink:0;text-align:right;
+  font-size:10px;font-weight:500;color:var(--text-secondary);line-height:1.3;
+}
+.wf-lbl.total{color:var(--text-primary);font-weight:700;}
+.wf-track{
+  flex:1;height:34px;background:rgba(255,255,255,0.025);
+  border-radius:6px;position:relative;overflow:hidden;
+}
+.wf-bar{
+  position:absolute;top:4px;height:26px;border-radius:4px;
+  display:flex;align-items:center;justify-content:flex-end;
+  transition:width 0.6s cubic-bezier(0.34,1.2,0.64,1);
+}
+.wf-val{width:48px;flex-shrink:0;font-size:12px;font-weight:700;text-align:right;}
+.wf-val.pos{color:var(--accent);}
+.wf-val.neg{color:var(--red);}
+.wf-val.neutral{color:var(--text-secondary);}
+.wf-val.total-val{color:var(--accent);}
+
+.wf-sep{
+  margin:4px 0 10px 108px;height:10px;
+  border-left:1.5px dashed rgba(255,255,255,0.07);
+}
+
+.view-over-time{
+  margin:0 16px;background:var(--bg-elevated);border-radius:var(--radius-sm);
+  padding:13px 16px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;border:1px solid var(--border);transition:border-color 0.15s;
+}
+.view-over-time:hover{border-color:var(--border-bright);}
+
+/* ==================== BOTTOM SHEET ==================== */
+.bs-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,0.65);
+  backdrop-filter:blur(6px);z-index:200;
+  display:none;flex-direction:column;justify-content:flex-end;
+}
+.bs-overlay.open{display:flex;}
+.bottom-sheet{
+  background:#162035;border-radius:24px 24px 0 0;
+  border-top:1px solid var(--border-bright);padding:0 20px 36px;
+}
+.bs-handle{
+  width:36px;height:4px;background:rgba(255,255,255,0.15);
+  border-radius:2px;margin:12px auto 20px;
+}
+.bs-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--bg-card);border-radius:20px;padding:4px 12px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;
+  margin-bottom:12px;
+}
+.bs-contribution{font-size:38px;font-weight:900;letter-spacing:-1.5px;margin-bottom:6px;}
+.bs-title{font-size:15px;font-weight:700;margin-bottom:10px;}
+.bs-body{font-size:13px;line-height:1.65;color:var(--text-secondary);}
+.btn-primary{
+  background:var(--accent);color:#000;font-family:inherit;font-size:14px;
+  font-weight:700;border:none;border-radius:10px;padding:12px 20px;
+  cursor:pointer;width:100%;margin-top:20px;transition:opacity 0.15s;
+}
+.btn-primary:hover{opacity:0.88;}
+
+/* ==================== TIME SERIES SCREEN ==================== */
+.chart-wrap{
+  padding:0 16px;height:240px;position:relative;
+}
+.legend{
+  display:flex;gap:14px;padding:0 16px 10px;flex-wrap:wrap;
+}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary);font-weight:500;}
+.leg-dot{width:8px;height:8px;border-radius:2px;}
+.insight-card{
+  margin:10px 16px;background:var(--accent-dim);
+  border:1px solid rgba(0,212,126,0.18);border-radius:var(--radius-sm);padding:13px 14px;
+}
+
+/* ==================== NOTIFICATION SCREEN ==================== */
+.notif-banner{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:14px 16px;margin:0 16px 10px;
+  display:flex;gap:12px;align-items:flex-start;cursor:pointer;
+  transition:border-color 0.15s;
+}
+.notif-banner:hover{border-color:var(--border-bright);}
+.notif-banner.highlight{border-color:rgba(0,212,126,0.3);background:rgba(0,212,126,0.04);}
+.notif-icon{
+  width:40px;height:40px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ==================== IPA SCREEN ==================== */
+.sebi-note{
+  background:rgba(255,184,0,0.05);border:1px solid rgba(255,184,0,0.15);
+  border-radius:8px;padding:10px 13px;margin:0 16px 10px;
+  font-size:11px;color:rgba(255,184,0,0.75);line-height:1.55;
+}
+
+/* ==================== RM DASHBOARD ==================== */
+.rm-wrap{width:100%;max-width:1280px;margin:0 auto;padding:0;}
+.rm-layout{
+  display:grid;grid-template-columns:240px 1fr;
+  min-height:calc(100vh - 62px);
+}
+.rm-sidebar{
+  background:var(--bg-card);border-right:1px solid var(--border);
+  padding:0;position:relative;
+}
+.rm-logo{
+  padding:22px 24px;border-bottom:1px solid var(--border);
+  font-size:20px;font-weight:900;color:var(--accent);display:flex;align-items:center;gap:6px;
+}
+.rm-logo-tag{
+  font-size:9px;font-weight:700;background:var(--accent-dim);color:var(--accent);
+  border-radius:4px;padding:2px 5px;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;
+}
+.rm-nav{padding:12px 0;}
+.rm-nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 24px;
+  font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;
+  transition:all 0.15s;border-left:2px solid transparent;
+}
+.rm-nav-item:hover{background:var(--bg-elevated);color:var(--text-primary);}
+.rm-nav-item.active{color:var(--accent);background:var(--accent-dim);border-left-color:var(--accent);}
+.rm-profile{
+  position:absolute;bottom:0;left:0;right:0;padding:16px 24px;
+  border-top:1px solid var(--border);background:var(--bg-card);
+}
+
+.rm-main{padding:28px 32px;background:var(--bg);}
+.rm-page-title{font-size:22px;font-weight:800;margin-bottom:4px;}
+.rm-page-sub{font-size:13px;color:var(--text-secondary);margin-bottom:24px;}
+
+.client-search-bar{display:flex;gap:10px;margin-bottom:22px;align-items:center;flex-wrap:wrap;}
+.search-input{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:10px;padding:9px 16px;font-size:13px;font-family:inherit;
+  color:var(--text-primary);outline:none;min-width:280px;
+}
+.search-input:focus{border-color:rgba(0,212,126,0.4);}
+.search-input::placeholder{color:var(--text-muted);}
+
+.client-pill{
+  display:flex;align-items:center;gap:8px;padding:7px 12px;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;transition:border-color 0.15s;
+}
+.client-pill.active{border-color:rgba(0,212,126,0.3);background:var(--accent-dim);}
+.client-pill:hover:not(.active){border-color:var(--border-bright);}
+.client-avatar{
+  width:28px;height:28px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:10px;font-weight:700;
+}
+
+.rm-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:20px;}
+.metric-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px 20px;
+}
+.metric-label{font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
+.metric-val{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.metric-sub{font-size:11px;color:var(--text-secondary);margin-top:4px;}
+
+.rm-wf-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:22px 24px;margin-bottom:18px;
+}
+.rm-wf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+
+.rm-wf-row{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.rm-wf-lbl{width:170px;flex-shrink:0;text-align:right;font-size:12px;font-weight:500;color:var(--text-secondary);line-height:1.3;}
+.rm-wf-lbl.total-lbl{color:var(--text-primary);font-weight:700;}
+.rm-wf-track{flex:1;height:40px;background:rgba(255,255,255,0.025);border-radius:8px;position:relative;overflow:hidden;}
+.rm-wf-bar{position:absolute;top:5px;height:30px;border-radius:6px;transition:width 0.7s cubic-bezier(0.34,1.2,0.64,1);}
+.rm-wf-val{width:72px;flex-shrink:0;font-size:14px;font-weight:700;text-align:right;}
+
+.rm-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-rm-primary{
+  background:var(--accent);color:#000;font-family:inherit;font-size:13px;
+  font-weight:700;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;
+  transition:opacity 0.15s;white-space:nowrap;
+}
+.btn-rm-primary:hover{opacity:0.88;}
+.btn-rm-sec{
+  background:var(--bg-elevated);color:var(--text-primary);font-family:inherit;font-size:13px;
+  font-weight:600;border:1px solid var(--border-bright);border-radius:10px;
+  padding:11px 20px;cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.btn-rm-sec:hover{background:var(--bg-hover);}
+
+.residual-row{display:flex;align-items:center;gap:14px;margin-top:2px;opacity:0.75;}
+.res-note{
+  font-size:11px;color:var(--text-muted);margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--border);line-height:1.5;
+}
+
+/* ==================== SPACER ==================== */
+.pb-nav{height:88px;}
+</style>
+</head>
+<body>
+
+<!-- =========== DEMO NAV =========== -->
+<nav class="demo-nav">
+  <span class="demo-label">Screens</span>
+  <button class="demo-btn active" onclick="goTo('portfolio',this)">📱 Portfolio Overview</button>
+  <button class="demo-btn" onclick="goTo('notification',this)">🔔 Notification</button>
+  <button class="demo-btn" onclick="goTo('waterfall',this)">📊 Value Bridge</button>
+  <button class="demo-btn" onclick="goTo('timeseries',this)">📈 Time Series</button>
+  <button class="demo-btn" onclick="goTo('ipa',this)">🔷 IPA View</button>
+  <button class="demo-btn" onclick="goTo('rm',this)">🖥 RM Dashboard</button>
+</nav>
+
+<div class="main">
+
+<!-- =========== CLIENT PHONE VIEW =========== -->
+<div class="phone-wrap" id="client-view">
+  <div class="phone-frame">
+    <div class="dynamic-island"></div>
+
+    <div class="screen-outer" id="screen-outer">
+
+      <!-- ===== SCREEN: PORTFOLIO ===== -->
+      <div class="client-screen visible" id="screen-portfolio">
+        <div class="app-header">
+          <div class="app-logo">dezerv</div>
+          <div style="display:flex;gap:10px;">
+            <div class="icon-btn" onclick="navTo('notification')">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <div class="notif-dot"></div>
+            </div>
+            <div class="icon-btn">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:2px 20px 14px;">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">Good morning,</div>
+          <div style="font-size:20px;font-weight:800;">Rahul Sharma</div>
+        </div>
+
+        <div class="portfolio-tabs">
+          <button class="ptab active">Portfolio</button>
+          <button class="ptab">Transactions</button>
+          <button class="ptab">Reports</button>
+        </div>
+
+        <!-- Portfolio Value Card -->
+        <div class="card">
+          <div style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">PMS Portfolio · DZ-PMS-4821</div>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:6px;">₹47,32,891</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <span class="chip chip-green">+₹9,62,891</span>
+            <span style="font-size:12px;color:var(--text-secondary);">Invested ₹37,70,000</span>
+          </div>
+
+          <div class="period-sel" id="portfolio-period">
+            <button class="p-btn" onclick="setPeriod(this,'portfolio-period','port')">3M</button>
+            <button class="p-btn" onclick="setPeriod(this,'portfolio-period','port')">6M</button>
+            <button class="p-btn active" onclick="setPeriod(this,'portfolio-period','port')">1Y</button>
+            <button class="p-btn" onclick="setPeriod(this,'portfolio-period','port')">Inception</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="xirr-row">
+            <div>
+              <div class="xirr-label">Your XIRR</div>
+              <div class="xirr-val" style="color:var(--accent);" id="port-xirr">+18.4%</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="xirr-label">Nifty 50</div>
+              <div class="xirr-val" style="color:var(--text-secondary);" id="port-bench">+14.2%</div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <span class="chip chip-green" id="port-alpha">+4.2% vs benchmark</span>
+          </div>
+        </div>
+
+        <!-- Attribution Summary Card -->
+        <div class="attrib-card" onclick="navTo('waterfall')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:700;">What drove your returns?</div>
+            <div style="font-size:10px;color:var(--text-secondary);" id="attrib-period-label">1Y Period</div>
+          </div>
+
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:#5A6A80;"></div>
+              <div><div class="attrib-name">Market Tailwind</div><div class="attrib-desc">Broad market return</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--text-secondary);" id="a-bench">+14.2%</div>
+          </div>
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:var(--accent);"></div>
+              <div><div class="attrib-name">Our Asset Mix</div><div class="attrib-desc">Allocation decisions</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--accent);" id="a-aa">+2.2%</div>
+          </div>
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:var(--blue);"></div>
+              <div><div class="attrib-name">Fund Selection</div><div class="attrib-desc">Active fund picks</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--blue);" id="a-fs">+2.0%</div>
+          </div>
+
+          <div class="card-arrow">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);">See the full picture</div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <!-- Holdings -->
+        <div style="padding:4px 16px 8px;font-size:13px;font-weight:700;">Top Holdings</div>
+        <div class="card-sm">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:12px;font-weight:600;">Mirae Asset Large Cap</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">Large Cap · 24.3% allocation</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:14px;font-weight:700;color:var(--accent);">+22.1%</div>
+              <div style="font-size:10px;color:var(--text-secondary);">1Y</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-sm">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:12px;font-weight:600;">Axis Midcap Fund</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">Mid Cap · 18.7% allocation</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:14px;font-weight:700;color:var(--accent);">+19.8%</div>
+              <div style="font-size:10px;color:var(--text-secondary);">1Y</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-sm">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:12px;font-weight:600;">ICICI Pru Short Duration</div>
+              <div style="font-size:10px;color:var(--text-secondary);margin-top:2px;">Debt · 15.2% allocation</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:14px;font-weight:700;color:var(--accent);">+7.4%</div>
+              <div style="font-size:10px;color:var(--text-secondary);">1Y</div>
+            </div>
+          </div>
+        </div>
+        <div class="pb-nav"></div>
+      </div>
+      <!-- /screen-portfolio -->
+
+      <!-- ===== SCREEN: NOTIFICATION ===== -->
+      <div class="client-screen" id="screen-notification">
+        <div class="screen-header">
+          <div class="back-btn" onclick="navTo('portfolio')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </div>
+          <div><div class="screen-title">Notifications</div></div>
+        </div>
+
+        <div style="padding:4px 16px 10px;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Today</div>
+
+        <div class="notif-banner highlight" onclick="navTo('waterfall')">
+          <div class="notif-icon" style="background:var(--accent-dim);">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <div style="font-size:13px;font-weight:600;">Q4 Performance Breakdown Ready</div>
+              <div class="notif-dot" style="position:static;width:7px;height:7px;flex-shrink:0;border:none;"></div>
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">Your Q4 performance breakdown is ready — see what drove your returns.</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">2 hours ago · Tap to open Value Bridge →</div>
+          </div>
+        </div>
+
+        <div style="padding:12px 16px 10px;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Earlier</div>
+
+        <div class="notif-banner" style="opacity:0.65;">
+          <div class="notif-icon" style="background:var(--blue-dim);">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Rebalancing Completed</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">Portfolio rebalanced on 31 Dec. Equity weight adjusted from 78% → 72%.</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">3 days ago</div>
+          </div>
+        </div>
+
+        <div class="notif-banner" style="opacity:0.5;">
+          <div class="notif-icon" style="background:rgba(255,184,0,0.08);">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Q3 2025 Statement Available</div>
+            <div style="font-size:12px;color:var(--text-secondary);">Your quarterly portfolio statement is ready to download.</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">Oct 12, 2025</div>
+          </div>
+        </div>
+
+        <div class="pb-nav"></div>
+      </div>
+      <!-- /screen-notification -->
+
+      <!-- ===== SCREEN: WATERFALL ===== -->
+      <div class="client-screen" id="screen-waterfall">
+        <div class="screen-header">
+          <div class="back-btn" onclick="navTo('portfolio')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </div>
+          <div>
+            <div class="screen-title">Value Bridge</div>
+            <div class="screen-subtitle">Rahul Sharma · PMS Portfolio</div>
+          </div>
+        </div>
+
+        <div style="padding:0 16px 12px;">
+          <div class="period-sel" id="wf-period">
+            <button class="p-btn" onclick="setPeriod(this,'wf-period','wf')">3M</button>
+            <button class="p-btn" onclick="setPeriod(this,'wf-period','wf')">6M</button>
+            <button class="p-btn active" onclick="setPeriod(this,'wf-period','wf')">1Y</button>
+            <button class="p-btn" onclick="setPeriod(this,'wf-period','wf')">Inception</button>
+          </div>
+        </div>
+
+        <div class="wf-summary">
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;">Your Portfolio</div>
+            <div style="font-size:26px;font-weight:900;color:var(--accent);letter-spacing:-0.5px;" id="wf-total">+18.4%</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px;">vs Benchmark</div>
+            <div style="font-size:26px;font-weight:900;color:var(--text-secondary);letter-spacing:-0.5px;" id="wf-bench">+14.2%</div>
+          </div>
+        </div>
+
+        <div class="wf-chart" id="waterfall-chart"><!-- rendered by JS --></div>
+
+        <div style="text-align:center;padding:6px;font-size:10px;color:var(--text-muted);">
+          Tap any bar for investment team insights
+        </div>
+
+        <div style="height:1px;background:var(--border);margin:8px 16px;"></div>
+
+        <div style="padding:8px 16px 16px;">
+          <div class="view-over-time" onclick="navTo('timeseries')">
+            <div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:2px;">View over time</div>
+              <div style="font-size:11px;color:var(--text-secondary);">See how each driver evolved month by month</div>
+            </div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <div class="pb-nav"></div>
+
+        <!-- Bottom sheet overlay -->
+        <div class="bs-overlay" id="bs-overlay" onclick="closeBs(event)">
+          <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="bs-handle"></div>
+            <div class="bs-badge" id="bs-badge">
+              <div class="attrib-dot" id="bs-dot" style="background:var(--accent);"></div>
+              <span id="bs-label">DRIVER</span>
+            </div>
+            <div class="bs-contribution" id="bs-contrib" style="color:var(--accent);">+2.2%</div>
+            <div class="bs-title" id="bs-title">Asset Allocation Effect</div>
+            <div class="bs-body" id="bs-body">Narrative here.</div>
+            <button class="btn-primary" onclick="closeBs()">Got it</button>
+          </div>
+        </div>
+      </div>
+      <!-- /screen-waterfall -->
+
+      <!-- ===== SCREEN: TIME SERIES ===== -->
+      <div class="client-screen" id="screen-timeseries">
+        <div class="screen-header">
+          <div class="back-btn" onclick="navTo('waterfall')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </div>
+          <div>
+            <div class="screen-title">Returns Over Time</div>
+            <div class="screen-subtitle">Monthly driver contribution</div>
+          </div>
+        </div>
+
+        <div style="padding:0 16px 10px;">
+          <div class="period-sel" id="ts-period">
+            <button class="p-btn" onclick="setPeriod(this,'ts-period','ts')">3M</button>
+            <button class="p-btn" onclick="setPeriod(this,'ts-period','ts')">6M</button>
+            <button class="p-btn active" onclick="setPeriod(this,'ts-period','ts')">1Y</button>
+            <button class="p-btn" onclick="setPeriod(this,'ts-period','ts')">Inception</button>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#5A6A80;"></div>Market Tailwind</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--accent);"></div>Our Asset Mix</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--blue);"></div>Fund Selection</div>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="ts-chart"></canvas>
+        </div>
+
+        <div class="insight-card">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:5px;">💡 Key Insight</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">Asset allocation has been consistently additive in 9 of 12 months. The debt tilt in May–Jun protected capital during the equity correction, contributing +0.4% above benchmark in those months.</div>
+        </div>
+
+        <div class="pb-nav"></div>
+      </div>
+      <!-- /screen-timeseries -->
+
+      <!-- ===== SCREEN: IPA VIEW ===== -->
+      <div class="client-screen" id="screen-ipa">
+        <div class="app-header">
+          <div class="app-logo">dezerv</div>
+          <div style="display:flex;gap:10px;">
+            <div class="icon-btn">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:2px 20px 14px;">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">Good morning,</div>
+          <div style="font-size:20px;font-weight:800;">Priya Nair</div>
+        </div>
+
+        <div class="portfolio-tabs">
+          <button class="ptab active">Portfolio</button>
+          <button class="ptab">Transactions</button>
+          <button class="ptab">Reports</button>
+        </div>
+
+        <!-- IPA Portfolio Value -->
+        <div class="card">
+          <div style="font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;">IPA™ Portfolio · DZ-IPA-7233</div>
+          <div style="font-size:30px;font-weight:900;letter-spacing:-1px;margin-bottom:6px;">₹1,24,87,340</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <span class="chip chip-green">+₹18,47,340</span>
+            <span style="font-size:12px;color:var(--text-secondary);">Invested ₹1,06,40,000</span>
+          </div>
+
+          <div class="period-sel" id="ipa-period">
+            <button class="p-btn" onclick="setPeriod(this,'ipa-period','ipa')">3M</button>
+            <button class="p-btn" onclick="setPeriod(this,'ipa-period','ipa')">6M</button>
+            <button class="p-btn active" onclick="setPeriod(this,'ipa-period','ipa')">1Y</button>
+            <button class="p-btn" onclick="setPeriod(this,'ipa-period','ipa')">Inception</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="xirr-row">
+            <div>
+              <div class="xirr-label">Your XIRR</div>
+              <div class="xirr-val" style="color:var(--accent);">+17.4%</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="xirr-label">Nifty 500 TRI</div>
+              <div class="xirr-val" style="color:var(--text-secondary);">+13.8%</div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <span class="chip chip-green">+3.6% vs benchmark</span>
+          </div>
+        </div>
+
+        <!-- IPA Attribution Card -->
+        <div class="attrib-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:700;">What drove your returns?</div>
+            <div style="font-size:10px;color:var(--text-secondary);">1Y Period</div>
+          </div>
+
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:#5A6A80;"></div>
+              <div><div class="attrib-name">Market Tailwind</div><div class="attrib-desc">Nifty 500 TRI return</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--text-secondary);">+13.8%</div>
+          </div>
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:var(--accent);"></div>
+              <div><div class="attrib-name">Our Asset Mix</div><div class="attrib-desc">Allocation decisions</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--accent);">+1.9%</div>
+          </div>
+          <div class="attrib-row">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <div class="attrib-dot" style="background:var(--blue);"></div>
+              <div><div class="attrib-name">Fund Picks</div><div class="attrib-desc">Active fund selection</div></div>
+            </div>
+            <div class="attrib-val" style="color:var(--blue);">+1.7%</div>
+          </div>
+
+          <div class="card-arrow">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);">See the full picture</div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <!-- IPA SEBI Note -->
+        <div class="sebi-note">
+          ⚖️ <strong>Regulatory disclosure:</strong> Trail commissions are embedded in fund expense ratios and do not affect the attribution calculation shown above. Attribution is computed on NAV-adjusted returns. SEBI Portfolio Manager Regulations 2020.
+        </div>
+
+        <!-- IPA Upgrade Prompt -->
+        <div style="margin:0 16px 12px;background:linear-gradient(135deg,#101F35,#0C1826);border:1px solid rgba(0,212,126,0.2);border-radius:var(--radius);padding:16px 18px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px;">Ready for PMS?</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">PMS clients get individual fund-level attribution drill-down and a quarterly review briefing with their RM.</div>
+          <button style="background:var(--accent);color:#000;font-family:inherit;font-size:12px;font-weight:700;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;width:100%;">Talk to your RM about upgrading →</button>
+        </div>
+
+        <div class="pb-nav"></div>
+      </div>
+      <!-- /screen-ipa -->
+
+    </div><!-- /screen-outer -->
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav" id="bottom-nav">
+      <div class="nav-item" onclick="navTo('portfolio')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Home</span>
+      </div>
+      <div class="nav-item active" id="nav-portfolio" onclick="navTo('portfolio')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Portfolio</span>
+      </div>
+      <div class="nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Explore</span>
+      </div>
+      <div class="nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Account</span>
+      </div>
+    </div>
+
+  </div><!-- /phone-frame -->
+</div><!-- /phone-wrap -->
+
+
+<!-- =========== RM DASHBOARD =========== -->
+<div id="rm-view" style="display:none;width:100%;">
+  <div class="rm-wrap">
+    <div class="rm-layout">
+
+      <!-- Sidebar -->
+      <div class="rm-sidebar">
+        <div class="rm-logo">
+          dezerv
+          <span class="rm-logo-tag">RM</span>
+        </div>
+        <div class="rm-nav">
+          <div class="rm-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Overview
+          </div>
+          <div class="rm-nav-item active">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Attribution
+          </div>
+          <div class="rm-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            My Clients
+          </div>
+          <div class="rm-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Reports
+          </div>
+          <div class="rm-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Review Calls
+          </div>
+          <div class="rm-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Analytics
+          </div>
+        </div>
+        <div class="rm-profile">
+          <div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px;">Logged in as</div>
+          <div style="font-size:13px;font-weight:700;">Priya Iyer</div>
+          <div style="font-size:11px;color:var(--text-muted);">Senior RM · 94 clients</div>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="rm-main">
+        <div class="rm-page-title">Attribution Briefing</div>
+        <div class="rm-page-sub">View performance attribution and export quarterly review materials for any client in your book</div>
+
+        <!-- Client selector -->
+        <div class="client-search-bar">
+          <input type="text" class="search-input" placeholder="Search by client name or ID…" value="Rahul Sharma">
+          <div class="client-pill active">
+            <div class="client-avatar" style="background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:700;">RS</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;">Rahul Sharma</div>
+              <div style="font-size:11px;color:var(--text-secondary);">PMS · DZ-PMS-4821</div>
+            </div>
+            <span class="chip chip-green" style="margin-left:4px;">Active</span>
+          </div>
+          <div class="client-pill" style="opacity:0.6;">
+            <div class="client-avatar" style="background:var(--bg-elevated);color:var(--text-secondary);font-size:11px;">NK</div>
+            <div style="font-size:13px;color:var(--text-secondary);">Neha Kapoor</div>
+          </div>
+          <div class="client-pill" style="opacity:0.6;">
+            <div class="client-avatar" style="background:var(--bg-elevated);color:var(--text-secondary);font-size:11px;">AM</div>
+            <div style="font-size:13px;color:var(--text-secondary);">Aditya Mehta</div>
+          </div>
+        </div>
+
+        <!-- Metric cards -->
+        <div class="rm-grid">
+          <div class="metric-card">
+            <div class="metric-label">Portfolio XIRR</div>
+            <div class="metric-val" style="color:var(--accent);">+18.4%</div>
+            <div class="metric-sub">Nifty 50 returned +14.2%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">AUM</div>
+            <div class="metric-val">₹47.3L</div>
+            <div class="metric-sub">Profit share: ₹38,516</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Alpha Generated</div>
+            <div class="metric-val" style="color:var(--accent);">+4.2%</div>
+            <div class="metric-sub">Top 12% of PMS cohort</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Attribution Status</div>
+            <div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px;">
+              <div style="width:7px;height:7px;background:var(--accent);border-radius:50%;"></div>
+              <span style="font-size:13px;font-weight:700;color:var(--accent);">Fresh</span>
+            </div>
+            <div class="metric-sub">Updated 25 Mar 2026, 7:42 AM</div>
+            <div style="font-size:11px;color:var(--yellow);margin-top:3px;">Residual: 0.12% ✓</div>
+          </div>
+        </div>
+
+        <!-- RM Waterfall -->
+        <div class="rm-wf-card">
+          <div class="rm-wf-head">
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:2px;">Value Bridge — 1 Year</div>
+              <div style="font-size:12px;color:var(--text-secondary);">25 Mar 2025 → 25 Mar 2026</div>
+            </div>
+            <div class="period-sel" id="rm-period" style="width:auto;">
+              <button class="p-btn" onclick="setPeriod(this,'rm-period','rm')">3M</button>
+              <button class="p-btn" onclick="setPeriod(this,'rm-period','rm')">6M</button>
+              <button class="p-btn active" onclick="setPeriod(this,'rm-period','rm')">1Y</button>
+              <button class="p-btn" onclick="setPeriod(this,'rm-period','rm')">Inception</button>
+            </div>
+          </div>
+
+          <div id="rm-wf-rows"><!-- rendered by JS --></div>
+
+          <!-- Residual (RM-only) -->
+          <div class="residual-row">
+            <div class="rm-wf-lbl" style="color:var(--yellow);font-size:11px;">
+              Unexplained<br>Residual <span style="font-size:9px;opacity:0.7;">(RM only)</span>
+            </div>
+            <div class="rm-wf-track">
+              <div style="position:absolute;top:5px;left:0;height:30px;width:1%;background:rgba(255,184,0,0.25);border-radius:6px;"></div>
+            </div>
+            <div style="width:72px;font-size:13px;font-weight:600;text-align:right;color:var(--yellow);">+0.12%</div>
+          </div>
+
+          <div class="res-note">
+            ⚠️ Residual &lt; 0.5% — quality gate <span style="color:var(--accent);font-weight:600;">passed</span>. Attribution data cleared for client-facing display. Data sourced from ClickHouse at T+1. Next update: 26 Mar 2026, ~7:30 AM.
+          </div>
+        </div>
+
+        <!-- PDF Export -->
+        <div class="rm-actions">
+          <button class="btn-rm-primary">📄 Generate Review PDF</button>
+          <button class="btn-rm-sec">✉️ Email to Client</button>
+          <button class="btn-rm-sec">📋 Copy Share Link</button>
+          <button class="btn-rm-sec">📅 Schedule QBR</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
+          PDF includes: Cover · Return Summary · Waterfall Chart · Investment Team Narratives · RM Annotation Field · Forward-Looking Note · SEBI Disclosures.<br>
+          Server-side rendering (Puppeteer). Download link valid for 24 hours. Audit record generated automatically.
+        </div>
+      </div><!-- /rm-main -->
+
+    </div><!-- /rm-layout -->
+  </div><!-- /rm-wrap -->
+</div>
+<!-- /rm-view -->
+
+</div><!-- /main -->
+
+<script>
+// ==================== DATA ====================
+
+const D = {
+  '3M':        { total:4.8,  bench:3.2,  aa:0.9,  fs:0.7 },
+  '6M':        { total:9.6,  bench:7.1,  aa:1.6,  fs:0.9 },
+  '1Y':        { total:18.4, bench:14.2, aa:2.2,  fs:2.0 },
+  'Inception': { total:42.1, bench:31.8, aa:6.2,  fs:4.1 },
+};
+
+const tsD = {
+  '3M': {
+    labels:['Jan','Feb','Mar'],
+    beta:[0.9,1.0,1.1], aa:[0.1,0.1,0.2], fs:[0.2,0.1,0.1]
+  },
+  '6M': {
+    labels:['Oct','Nov','Dec','Jan','Feb','Mar'],
+    beta:[1.3,1.5,1.4,0.9,1.0,1.1], aa:[0.2,0.3,0.2,0.1,0.1,0.2], fs:[0.2,0.2,0.1,0.2,0.1,0.1]
+  },
+  '1Y': {
+    labels:['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],
+    beta:[1.2,1.0,0.8,1.4,1.3,1.1,1.3,1.5,1.4,0.9,1.0,1.1],
+    aa:  [0.2,0.4,0.3,0.2,0.1,0.2,0.2,0.3,0.2,0.1,0.1,0.2],
+    fs:  [0.1,0.2,0.1,0.2,0.2,0.1,0.2,0.2,0.1,0.2,0.1,0.1]
+  },
+  'Inception': {
+    labels:['2022','2023','2024','YTD 25','YTD 26'],
+    beta:[8.2,7.4,10.1,4.3,1.8], aa:[1.2,2.1,1.8,0.8,0.3], fs:[0.8,1.2,1.4,0.5,0.2]
+  },
+};
+
+const BAR_DETAILS = {
+  bench: {
+    color:'#5A6A80',label:'MARKET TAILWIND',
+    title:'Nifty 50 TRI Benchmark Return',
+    body:'This is the return delivered by the Nifty 50 Total Return Index over the period — the baseline any investor with a passive Nifty ETF would have received. Every percentage point above this line is attributable to active decisions by the Dezerv investment team.'
+  },
+  aa: {
+    color:'#00D47E',label:'OUR ASSET MIX',
+    title:'Asset Allocation Effect',
+    body:'Dezerv held a higher weight in mid-cap equities and a lower weight in large-cap during Q2–Q3, when mid-cap indices outperformed large-cap by 3.8 percentage points. The 15% allocation to short-duration debt through May–Jun protected capital during the equity correction. These allocation tilts contributed +2.2% above the benchmark return.'
+  },
+  fs: {
+    color:'#4FACFE',label:'FUND SELECTION',
+    title:'Fund Selection Effect',
+    body:'Within each asset class, the specific funds selected outperformed their sub-category benchmarks. Mirae Asset Large Cap exceeded Nifty 100 TRI by +1.4 percentage points. Axis Midcap exceeded Nifty Midcap 150 TRI by +0.6 percentage points. The weighted average of these within-category excess returns contributed +2.0% to total portfolio return.'
+  }
+};
+
+// ==================== NAVIGATION ====================
+
+let currentScreen = 'portfolio';
+let tsChart = null;
+
+function goTo(screen, btn) {
+  // Update demo nav
+  document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  if (screen === 'rm') {
+    document.getElementById('client-view').style.display = 'none';
+    document.getElementById('rm-view').style.display = 'block';
+    renderRMWaterfall('1Y');
+    return;
+  }
+
+  document.getElementById('client-view').style.display = 'flex';
+  document.getElementById('rm-view').style.display = 'none';
+
+  navTo(screen);
+}
+
+function navTo(screen) {
+  // Hide all client screens
+  document.querySelectorAll('.client-screen').forEach(s => s.classList.remove('visible'));
+  const el = document.getElementById('screen-' + screen);
+  if (el) el.classList.add('visible');
+  document.getElementById('screen-outer').scrollTop = 0;
+
+  currentScreen = screen;
+
+  // Show/hide bottom nav
+  const noNav = ['waterfall','timeseries','notification'];
+  document.getElementById('bottom-nav').style.display =
+    noNav.includes(screen) ? 'none' : 'flex';
+
+  // Init charts
+  if (screen === 'waterfall') renderWaterfall('1Y');
+  if (screen === 'timeseries') { setTimeout(() => initTS('1Y'), 80); }
+}
+
+// ==================== PERIOD SELECTORS ====================
+
+function setPeriod(btn, groupId, context) {
+  const g = document.getElementById(groupId);
+  g.querySelectorAll('.p-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const period = btn.textContent.trim();
+
+  if (context === 'port') updatePortfolioCard(period);
+  if (context === 'wf')   updateWaterfall(period);
+  if (context === 'ts')   initTS(period);
+  if (context === 'rm')   renderRMWaterfall(period);
+  if (context === 'ipa')  {} // IPA uses same pattern
+}
+
+// ==================== PORTFOLIO CARD ====================
+
+function updatePortfolioCard(period) {
+  const d = D[period] || D['1Y'];
+  const alpha = (d.total - d.bench).toFixed(1);
+  document.getElementById('port-xirr').textContent = '+' + d.total + '%';
+  document.getElementById('port-bench').textContent = '+' + d.bench + '%';
+  document.getElementById('port-alpha').textContent = '+' + alpha + '% vs benchmark';
+  document.getElementById('a-bench').textContent = '+' + d.bench + '%';
+  document.getElementById('a-aa').textContent = '+' + d.aa + '%';
+  document.getElementById('a-fs').textContent = '+' + d.fs + '%';
+  document.getElementById('attrib-period-label').textContent = period + ' Period';
+}
+
+// ==================== WATERFALL ====================
+
+function updateWaterfall(period) {
+  const d = D[period] || D['1Y'];
+  document.getElementById('wf-total').textContent = '+' + d.total + '%';
+  document.getElementById('wf-bench').textContent = '+' + d.bench + '%';
+  renderWaterfall(period);
+}
+
+function renderWaterfall(period) {
+  const d = D[period] || D['1Y'];
+  const max = d.total * 1.12;
+
+  const rows = [
+    { id:'bench', lbl:'Benchmark\nReturn',   val:d.bench,         start:0,               total:false },
+    { id:'aa',    lbl:'Our Asset\nMix',      val:d.aa,            start:d.bench,         total:false },
+    { id:'fs',    lbl:'Fund\nSelection',     val:d.fs,            start:d.bench+d.aa,    total:false },
+    { id:'total', lbl:'Your\nPortfolio',     val:d.total,         start:0,               total:true  },
+  ];
+
+  let html = '';
+  rows.forEach((r, i) => {
+    const det = BAR_DETAILS[r.id];
+    const color = r.total ? 'linear-gradient(90deg,#00D47E,#00FF9B)' : (det ? det.color : '#5A6A80');
+    const leftPct = r.total ? 0 : (r.start / max * 100);
+    const widthPct = (r.val / max * 100);
+    const valCls = r.total ? 'total-val' : (r.val > 0 ? 'pos' : 'neg');
+    const valColor = r.total ? 'var(--accent)' : (r.val > 0 ? '#fff' : 'var(--red)');
+    const sign = r.val > 0 ? '+' : '';
+
+    const clickable = !r.total;
+    const onclick = clickable ? `onclick="openBs('${r.id}','${sign}${r.val}%')"` : '';
+
+    html += `<div class="wf-row${r.total?' total':''}" ${onclick} style="${clickable?'cursor:pointer;':''}">
+      <div class="wf-lbl${r.total?' total':''}" style="white-space:pre-line;">${r.lbl}</div>
+      <div class="wf-track">
+        <div class="wf-bar" style="left:${leftPct.toFixed(1)}%;width:${widthPct.toFixed(1)}%;background:${color};${r.total?'border:1.5px solid rgba(0,212,126,0.35);':''}">
+          ${clickable ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="3" style="margin-right:4px;flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>` : ''}
+        </div>
+      </div>
+      <div class="wf-val ${valCls}" style="color:${valColor};">${sign}${r.val}%</div>
+    </div>`;
+
+    if (!r.total && i < rows.length - 2) {
+      const connLeft = (r.start + r.val) / max * 100;
+      html += `<div style="height:10px;border-left:1.5px dashed rgba(255,255,255,0.06);margin-left:${108 + (connLeft/100)*100}px;margin-bottom:-2px;"></div>`;
+    }
+  });
+
+  const el = document.getElementById('waterfall-chart');
+  if (el) el.innerHTML = html;
+}
+
+// ==================== BOTTOM SHEET ====================
+
+function openBs(id, contrib) {
+  const d = BAR_DETAILS[id];
+  if (!d) return;
+  document.getElementById('bs-dot').style.background = d.color;
+  document.getElementById('bs-label').textContent = d.label;
+  document.getElementById('bs-contrib').textContent = contrib;
+  document.getElementById('bs-contrib').style.color = d.color;
+  document.getElementById('bs-title').textContent = d.title;
+  document.getElementById('bs-body').textContent = d.body;
+  document.getElementById('bs-overlay').classList.add('open');
+}
+
+function closeBs(e) {
+  if (!e || e.target === document.getElementById('bs-overlay'))
+    document.getElementById('bs-overlay').classList.remove('open');
+}
+
+// ==================== TIME SERIES ====================
+
+function initTS(period) {
+  const data = tsD[period] || tsD['1Y'];
+  const canvas = document.getElementById('ts-chart');
+  if (!canvas) return;
+
+  if (tsChart) { tsChart.destroy(); tsChart = null; }
+
+  tsChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        {
+          label:'Market Tailwind',
+          data: data.beta,
+          backgroundColor:'rgba(90,106,128,0.75)',
+          borderRadius:3, borderSkipped:false,
+        },
+        {
+          label:'Our Asset Mix',
+          data: data.aa,
+          backgroundColor:'rgba(0,212,126,0.75)',
+          borderRadius:3, borderSkipped:false,
+        },
+        {
+          label:'Fund Selection',
+          data: data.fs,
+          backgroundColor:'rgba(79,172,254,0.75)',
+          borderRadius:3, borderSkipped:false,
+        },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#162035',titleColor:'#fff',bodyColor:'#6A7D96',
+          borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,
+          callbacks:{label: ctx => `${ctx.dataset.label}: +${ctx.raw.toFixed(1)}%`}
+        }
+      },
+      scales:{
+        x:{
+          stacked:true,
+          grid:{display:false, drawBorder:false},
+          ticks:{color:'#3A4A5E',font:{size:10}},
+          border:{display:false}
+        },
+        y:{
+          stacked:true,
+          grid:{color:'rgba(255,255,255,0.03)',drawBorder:false},
+          ticks:{color:'#3A4A5E',font:{size:10},callback:v=>'+'+v+'%'},
+          border:{display:false}, beginAtZero:true
+        }
+      }
+    }
+  });
+}
+
+// ==================== RM WATERFALL ====================
+
+function renderRMWaterfall(period) {
+  const d = D[period] || D['1Y'];
+  const max = d.total * 1.12;
+
+  const rows = [
+    { id:'bench', lbl:'Benchmark Return',  val:d.bench,       start:0,            total:false },
+    { id:'aa',    lbl:'Our Asset Mix',     val:d.aa,          start:d.bench,      total:false },
+    { id:'fs',    lbl:'Fund Selection',    val:d.fs,          start:d.bench+d.aa, total:false },
+    { id:'total', lbl:'Your Portfolio',    val:d.total,       start:0,            total:true  },
+  ];
+
+  let html = '';
+  rows.forEach(r => {
+    const det = BAR_DETAILS[r.id];
+    const color = r.total ? 'linear-gradient(90deg,#00D47E,#00FF9B)' : (det ? det.color : '#5A6A80');
+    const leftPct = r.total ? 0 : (r.start / max * 100);
+    const widthPct = (r.val / max * 100);
+    const sign = r.val > 0 ? '+' : '';
+    const valColor = r.total ? 'var(--accent)' : (r.val > 0 ? '#fff' : 'var(--red)');
+
+    html += `<div class="rm-wf-row">
+      <div class="rm-wf-lbl${r.total?' total-lbl':''}">${r.lbl}</div>
+      <div class="rm-wf-track">
+        <div class="rm-wf-bar" style="left:${leftPct.toFixed(1)}%;width:${widthPct.toFixed(1)}%;background:${color};${r.total?'border:1.5px solid rgba(0,212,126,0.35);':''}"></div>
+      </div>
+      <div class="rm-wf-val" style="color:${valColor};">${sign}${r.val}%</div>
+    </div>`;
+  });
+
+  const el = document.getElementById('rm-wf-rows');
+  if (el) el.innerHTML = html;
+}
+
+// ==================== INIT ====================
+
+document.addEventListener('DOMContentLoaded', () => {
+  goTo('portfolio', document.querySelector('.demo-btn'));
+  document.querySelector('.demo-btn').classList.add('active');
+  renderRMWaterfall('1Y');
+});
+</script>
+</body>
+</html>
